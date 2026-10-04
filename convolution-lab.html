@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Convolution Lab</title>
+<style>
+:root{--bg:#0f1115;--bg2:#171a21;--panel:#171a21;--line:#22305200;--edge:#2b303b;--text:#e8eaf0;--mute:#8b93a3;--cyan:#5aa9e6;--pink:#e8a14a;--green:#5fbf8f;--gold:#e6c65a;--violet:#b08cf0;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:"Space Grotesk","Segoe UI",system-ui,sans-serif;min-height:100vh}
+header{display:flex;flex-wrap:wrap;gap:14px 24px;align-items:center;justify-content:space-between;padding:22px 28px 6px}
+h1{margin:0;font-size:26px;letter-spacing:.2px;font-weight:600}
+h1 small{display:block;font-size:13px;color:var(--mute);font-weight:400;margin-top:4px}
+.seg{display:flex;background:var(--bg2);border:1px solid var(--edge);border-radius:12px;padding:4px}
+.seg button{background:none;border:0;color:var(--mute);padding:9px 18px;border-radius:9px;font:inherit;cursor:pointer;font-size:14px}
+.seg button.on{background:#2f5fb3;color:#fff}
+main{display:grid;grid-template-columns:310px 1fr;gap:18px;padding:16px 28px 30px;max-width:1500px;margin:auto}
+.side{display:flex;flex-direction:column;gap:14px}
+.card{background:#171a21;border:1px solid var(--edge);border-radius:14px;padding:14px 16px}
+.card h3{margin:0 0 10px;font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+select{width:100%;background:var(--bg2);color:var(--text);border:1px solid var(--edge);border-radius:9px;padding:9px 10px;font:inherit;font-size:14px;margin-bottom:8px}
+.sl{display:grid;grid-template-columns:1fr auto;gap:2px 8px;font-size:13px;color:var(--mute);margin:8px 0}
+.sl output{color:var(--text);font-variant-numeric:tabular-nums}
+.sl input{grid-column:1/3;width:100%;accent-color:var(--accent,#5aa9e6);height:22px}
+.btns{display:flex;gap:8px;margin-top:6px}
+.btns button{flex:1;background:var(--bg2);color:var(--text);border:1px solid var(--edge);border-radius:9px;padding:9px;font:inherit;cursor:pointer}
+.btns button.go{background:#2f5fb3;border:0}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.plots{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.plots .wide{grid-column:1/3}
+.pl{background:#171a21;border:1px solid var(--edge);border-radius:14px;padding:10px 12px 6px;min-width:0}
+.pl h4{margin:0 0 4px;font-size:13px;font-weight:500;color:var(--mute);display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.pl h4 b{color:var(--text);font-weight:600}
+.pl canvas{width:100%;height:170px;display:block}
+.pl.tall canvas{height:230px}
+.key{display:inline-flex;align-items:center;gap:5px;font-size:12px}
+.key i{width:14px;height:3px;border-radius:2px;display:inline-block}
+.read{margin-left:auto;color:var(--gold);font-variant-numeric:tabular-nums;font-weight:600}
+.eq{font-family:Georgia,serif;font-style:italic;color:#b8c0d4;font-size:15px;margin:2px 0 0}
+@media(max-width:940px){main{grid-template-columns:1fr;padding:12px 14px}header{padding:18px 14px 4px}.plots{grid-template-columns:1fr}.plots .wide{grid-column:auto}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Convolution Lab<small>Pick two signals, change their parameters, and watch the output build up.</small></h1>
+  <div class="seg" role="group" aria-label="Signal domain"><button id="mct" class="on">Continuous time</button><button id="mdt">Discrete time</button></div>
+</header>
+<main>
+  <div class="side">
+    <div class="card" style="--accent:#5aa9e6"><h3><span class="dot" style="background:var(--cyan)"></span><span id="tx">Input x(t)</span></h3><div id="c_x"></div></div>
+    <div class="card" style="--accent:#e8a14a"><h3><span class="dot" style="background:var(--pink)"></span><span id="th">Impulse response h(t)</span></h3><div id="c_h"></div></div>
+    <div class="card" style="--accent:#e6c65a"><h3><span class="dot" style="background:var(--gold)"></span><span id="tt">Time shift t</span></h3>
+      <div class="sl"><span id="tl">t</span><output id="tv"></output><input id="ts" type="range"></div>
+      <div class="sl"><span>Play speed</span><output id="sv">1.0×</output><input id="sp" type="range" min="0.25" max="3" step="0.25" value="1"></div>
+      <div class="btns"><button id="play" class="go">Play</button><button id="reset">Reset</button></div>
+    </div>
+  </div>
+  <div class="plots">
+    <div class="pl"><h4><b id="p1">x(t)</b><span class="key"><i style="background:var(--cyan)"></i>input</span></h4><canvas id="cx"></canvas></div>
+    <div class="pl"><h4><b id="p2">h(t)</b><span class="key"><i style="background:var(--pink)"></i>system</span></h4><canvas id="ch"></canvas></div>
+    <div class="pl wide tall"><h4><b id="p3">Sliding overlap</b><span class="key"><i style="background:var(--cyan)"></i><span id="k1">x(τ)</span></span><span class="key"><i style="background:var(--pink)"></i><span id="k2">h(t−τ)</span></span><span class="key"><i style="background:var(--green)"></i>product</span></h4><canvas id="co"></canvas></div>
+    <div class="pl wide tall"><h4><b id="p4">Output y(t)</b><span class="key"><i style="background:var(--violet)"></i>y</span><span class="read" id="rd"></span></h4><canvas id="cy"></canvas><p class="eq" id="eq"></p></div>
+  </div>
+</main>
+<script>
+const $=s=>document.querySelector(s),TAU=Math.PI*2;
+const SIG={
+ct:{
+ rect:{name:'Rectangular pulse',pl:'Width',min:.2,max:6,step:.1,val:2,f:(u,A,p)=>Math.abs(u)<p/2?A:0},
+ tri:{name:'Triangular pulse',pl:'Half-width',min:.5,max:4,step:.1,val:1.5,f:(u,A,p)=>Math.abs(u)<p?A*(1-Math.abs(u)/p):0},
+ exp:{name:'Decaying exponential',pl:'Decay rate',min:.1,max:3,step:.1,val:1,f:(u,A,p)=>u>=0?A*Math.exp(-p*u):0},
+ step:{name:'Unit step',f:(u,A)=>u>=0?A:0},
+ sine:{name:'Sine burst (2 s)',pl:'Frequency (Hz)',min:.25,max:3,step:.05,val:1,f:(u,A,p)=>u>=0&&u<2?A*Math.sin(TAU*p*u):0},
+ gauss:{name:'Gaussian',pl:'Std. deviation',min:.2,max:2,step:.05,val:.7,f:(u,A,p)=>A*Math.exp(-u*u/(2*p*p))}},
+dt:{
+ rect:{name:'Rectangular (length N)',pl:'Length N',min:1,max:8,step:1,val:4,f:(u,A,p)=>u>=0&&u<p?A:0},
+ tri:{name:'Triangular',pl:'Half-length',min:1,max:6,step:1,val:3,f:(u,A,p)=>Math.abs(u)<p?A*(1-Math.abs(u)/p):0},
+ exp:{name:'Exponential aⁿ·u[n]',pl:'Base a',min:.1,max:1.1,step:.05,val:.8,f:(u,A,p)=>u>=0?A*Math.pow(p,u):0},
+ step:{name:'Unit step u[n]',f:(u,A)=>u>=0?A:0},
+ imp:{name:'Unit impulse δ[n]',f:(u,A)=>u===0?A:0},
+ sine:{name:'Sine burst (8 samples)',pl:'ω (rad/sample)',min:.1,max:3.1,step:.05,val:.8,f:(u,A,p)=>u>=0&&u<8?A*Math.sin(p*u):0}}};
+const st={mode:'ct',t:0,x:null,h:null};
+function defaults(){const L=SIG[st.mode];st.x={type:'rect',A:1,p:L.rect.val,d:0};st.h={type:'exp',A:1,p:L.exp.val,d:0};}
+function addSlider(box,label,min,max,step,val,cb){
+ const w=document.createElement('label');w.className='sl';
+ w.innerHTML=`<span>${label}</span><output></output><input type="range" min="${min}" max="${max}" step="${step}" value="${val}">`;
+ const i=w.querySelector('input'),o=w.querySelector('output'),show=()=>o.textContent=(+i.value).toFixed(step<1?2:0);show();
+ i.oninput=()=>{cb(+i.value);show();update()};box.append(w);}
+function buildCard(k){
+ const box=$('#c_'+k),S=st[k],L=SIG[st.mode];box.innerHTML='';
+ const sel=document.createElement('select');sel.setAttribute('aria-label','Signal type');
+ sel.innerHTML=Object.entries(L).map(([id,v])=>`<option value="${id}"${id===S.type?' selected':''}>${v.name}</option>`).join('');
+ sel.onchange=()=>{S.type=sel.value;S.p=L[S.type].val;buildCard(k);update()};box.append(sel);
+ const m=L[S.type];
+ addSlider(box,'Amplitude',-3,3,.1,S.A,v=>S.A=v);
+ if(m.pl)addSlider(box,m.pl,m.min,m.max,m.step,S.p,v=>S.p=v);
+ addSlider(box,'Shift',-4,4,st.mode==='ct'?.1:1,S.d,v=>S.d=v);}
+function labels(){
+ const c=st.mode==='ct',v=c?'t':'n',w=c?'τ':'k',b=s=>c?`(${s})`:`[${s}]`;
+ $('#tx').textContent='Input x'+b(v);$('#th').textContent='Impulse response h'+b(v);
+ $('#tt').textContent=c?'Time shift t':'Sample index n';$('#tl').textContent=v;
+ $('#p1').textContent='x'+b(v);$('#p2').textContent='h'+b(v);
+ $('#p3').textContent='Sliding overlap: flip h, shift it, multiply';
+ $('#k1').textContent='x'+b(w);$('#k2').textContent='h'+(c?'(t−τ)':'[n−k]');
+ $('#p4').textContent='Output y'+b(v);
+ $('#eq').textContent=c?'y(t) = ∫ x(τ) h(t−τ) dτ   (area under the green curve)':'y[n] = Σ x[k] h[n−k]   (sum of the green stems)';
+ const s=$('#ts'),R=c?8:10;s.min=-R;s.max=R;s.step=c?.05:1;s.value=st.t;}
+function niceStep(x){const p=Math.pow(10,Math.floor(Math.log10(x))),f=x/p;return(f<1.5?1:f<3.5?2:f<7.5?5:10)*p}
+function plot(id,o){
+ const cv=$('#'+id),r=cv.getBoundingClientRect(),dpr=devicePixelRatio||1;
+ cv.width=Math.max(1,r.width*dpr);cv.height=Math.max(1,r.height*dpr);
+ const g=cv.getContext('2d');g.scale(dpr,dpr);
+ const W=r.width,H=r.height,L=40,Rg=12,T=12,B=22,pw=W-L-Rg,ph=H-T-B;
+ let mn=0,mx=0;o.s.forEach(s=>s.ys.forEach(v=>{if(v<mn)mn=v;if(v>mx)mx=v}));
+ mn*=1.25;mx*=1.25;if(mx-mn<1){mx=Math.max(mx,.5);mn=Math.min(mn,-.5)}
+ const [a,b]=o.xr,X=v=>L+(v-a)/(b-a)*pw,Y=v=>T+(mx-v)/(mx-mn)*ph;
+ g.font='11px system-ui,sans-serif';g.fillStyle='#8b93a3';g.strokeStyle='rgba(255,255,255,.07)';g.lineWidth=1;
+ for(let v=Math.ceil(a);v<=b;v++){g.beginPath();g.moveTo(X(v),T);g.lineTo(X(v),T+ph);g.stroke();if(v%2===0){g.textAlign='center';g.fillText(v,X(v),H-6)}}
+ const ys=niceStep((mx-mn)/4);g.textAlign='right';
+ for(let v=Math.ceil(mn/ys)*ys;v<=mx;v+=ys){g.beginPath();g.moveTo(L,Y(v));g.lineTo(L+pw,Y(v));g.stroke();g.fillText((+v.toFixed(2)),L-6,Y(v)+4)}
+ g.strokeStyle='rgba(255,255,255,.4)';g.beginPath();g.moveTo(L,Y(0));g.lineTo(L+pw,Y(0));g.stroke();
+ if(a<0&&b>0){g.beginPath();g.moveTo(X(0),T);g.lineTo(X(0),T+ph);g.stroke()}
+ g.save();g.beginPath();g.rect(L,T-4,pw,ph+8);g.clip();
+ o.s.forEach(s=>{
+  g.globalAlpha=s.a??1;g.strokeStyle=s.c;g.fillStyle=s.c;g.lineWidth=s.w||2;const off=s.off||0;
+  if(s.k==='stem'){
+   s.xs.forEach((x,i)=>{const y=s.ys[i];if(Math.abs(y)<1e-9)return;g.beginPath();g.moveTo(X(x+off),Y(0));g.lineTo(X(x+off),Y(y));g.stroke();g.beginPath();g.arc(X(x+off),Y(y),3,0,TAU);g.fill()})
+  }else{
+   g.beginPath();
+   s.xs.forEach((x,i)=>{i?g.lineTo(X(x),Y(s.ys[i])):g.moveTo(X(x),Y(s.ys[i]))});
+   if(s.k==='fill'){g.stroke();g.lineTo(X(s.xs[s.xs.length-1]),Y(0));g.lineTo(X(s.xs[0]),Y(0));g.closePath();g.globalAlpha=(s.a??1)*.25;g.fill()}else g.stroke();
+   }
+ });
+ g.restore();g.globalAlpha=1;
+ if(o.v!=null){g.setLineDash([5,4]);g.strokeStyle='#e6c65a';g.beginPath();g.moveTo(X(o.v),T);g.lineTo(X(o.v),T+ph);g.stroke();g.setLineDash([])}
+ if(o.dot){g.fillStyle='#e6c65a';g.beginPath();g.arc(X(o.dot[0]),Y(o.dot[1]),5.5,0,TAU);g.fill();}
+}
+function update(){
+ const ct=st.mode==='ct',R=ct?8:10,dt=ct?.04:1,N=Math.round(2*R/dt)+1,ts=Array.from({length:N},(_,i)=>-R+i*dt);
+ const LX=SIG[st.mode][st.x.type],LH=SIG[st.mode][st.h.type];
+ const X=t=>LX.f(t-st.x.d,st.x.A,st.x.p),H=t=>LH.f(t-st.h.d,st.h.A,st.h.p);
+ const xs=ts.map(X),hs=ts.map(H);
+ const y=ts.map(t=>{let s=0;for(let i=0;i<N;i++)if(xs[i]!==0)s+=xs[i]*H(t-ts[i]);return s*dt});
+ const t=st.t,fl=ts.map(tau=>H(t-tau)),pr=xs.map((v,i)=>v*fl[i]);
+ let yt=0;pr.forEach(v=>yt+=v);yt*=dt;
+ const k=ct?'line':'stem',xr=[-R,R],cut=ts.filter(v=>v<=t+1e-9).length;
+ plot('cx',{xr,s:[{xs:ts,ys:xs,c:'#5aa9e6',k}]});
+ plot('ch',{xr,s:[{xs:ts,ys:hs,c:'#e8a14a',k}]});
+ plot('co',{xr,v:t,s:[{xs:ts,ys:xs,c:'#5aa9e6',k,off:ct?0:-.09},{xs:ts,ys:fl,c:'#e8a14a',k,off:ct?0:.09},{xs:ts,ys:pr,c:'#5fbf8f',k:ct?'fill':'stem',w:2}]});
+ plot('cy',{xr,v:t,dot:[t,yt],s:[{xs:ts,ys:y,c:'#b08cf0',k,a:.28},{xs:ts.slice(0,cut),ys:y.slice(0,cut),c:'#b08cf0',k,w:2.5}]});
+ $('#tv').textContent=ct?t.toFixed(2):t;
+ $('#rd').textContent=(ct?`y(${t.toFixed(2)})`:`y[${t}]`)+' = '+yt.toFixed(3);
+}
+function setMode(m){
+ st.mode=m;st.t=0;defaults();labels();buildCard('x');buildCard('h');
+ $('#mct').classList.toggle('on',m==='ct');$('#mdt').classList.toggle('on',m==='dt');update();}
+$('#mct').onclick=()=>setMode('ct');$('#mdt').onclick=()=>setMode('dt');
+$('#ts').oninput=e=>{st.t=+e.target.value;update()};
+$('#sp').oninput=e=>{$('#sv').textContent=(+e.target.value).toFixed(2).replace(/0$/,'')+'×'};
+$('#reset').onclick=()=>{playing=false;$('#play').textContent='Play';setMode(st.mode)};
+let playing=false,last=0,acc=0;
+function tick(now){
+ if(!playing)return;const d=Math.min(.1,(now-last)/1000),sp=+$('#sp').value,R=st.mode==='ct'?8:10;last=now;
+ if(st.mode==='ct')st.t=Math.round((st.t+d*sp*2)*100)/100;else{acc+=d*sp;if(acc>.4){acc=0;st.t+=1}}
+ if(st.t>R)st.t=-R;$('#ts').value=st.t;update();requestAnimationFrame(tick)}
+$('#play').onclick=()=>{playing=!playing;$('#play').textContent=playing?'Pause':'Play';if(playing){last=performance.now();requestAnimationFrame(tick)}};
+new ResizeObserver(()=>update()).observe(document.querySelector('.plots'));
+setMode('ct');
+</script>
+</body>
+</html>
